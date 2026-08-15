@@ -1,58 +1,49 @@
-using InventoryManagement.Web.Models;
-using InventoryManagement.Web.Services;
-using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using InventoryManagement.Web.Models;
+using InventoryManagement.Web.Repositories;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InventoryManagement.Web.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ICategoryApiClient _categoryApiClient;
-        private readonly IProductApiClient _productApiClient;
-        private readonly IStockApiClient _stockApiClient;
-        private readonly ILogger<HomeController> _logger;
+        private readonly ICategoryRepository _categoryRepository;
+        private readonly IProductRepository _productRepository;
+        private readonly IStockRepository _stockRepository;
 
         public HomeController(
-            ICategoryApiClient categoryApiClient,
-            IProductApiClient productApiClient,
-            IStockApiClient stockApiClient,
-            ILogger<HomeController> logger)
+            ICategoryRepository categoryRepository,
+            IProductRepository productRepository,
+            IStockRepository stockRepository)
         {
-            _categoryApiClient = categoryApiClient;
-            _productApiClient = productApiClient;
-            _stockApiClient = stockApiClient;
-            _logger = logger;
+            _categoryRepository = categoryRepository;
+            _productRepository = productRepository;
+            _stockRepository = stockRepository;
         }
 
-        public async Task<IActionResult> Index(CancellationToken cancellationToken)
+        // GET: /  (Ana sayfa / Panel)
+        public IActionResult Index()
         {
-            var dashboard = new DashboardViewModel();
+            var categories = _categoryRepository.GetAll();
+            var products = _productRepository.GetAll();
+            var stocks = _stockRepository.GetAll();
 
-            try
+            var dashboard = new DashboardViewModel
             {
-                var categories = await _categoryApiClient.GetAllAsync(cancellationToken);
-                var products = await _productApiClient.GetAllAsync(cancellationToken);
-                var stocks = await _stockApiClient.GetAllAsync(cancellationToken);
-
-                dashboard.CategoryCount = categories.Count;
-                dashboard.ProductCount = products.Count;
-                dashboard.LowStockCount = stocks.Count(s => s.Status == StockStatus.LowStock);
-                dashboard.OutOfStockCount = stocks.Count(s => s.Status == StockStatus.OutOfStock);
-                dashboard.RecentProducts = products
+                CategoryCount = categories.Count,
+                ProductCount = products.Count,
+                LowStockCount = stocks.Count(s => s.Status == StockStatus.LowStock),
+                OutOfStockCount = stocks.Count(s => s.Status == StockStatus.OutOfStock),
+                RecentProducts = products
                     .OrderByDescending(p => p.Id)
                     .Take(5)
-                    .ToList();
-                dashboard.CriticalStocks = stocks
-                    .Where(s => s.Status is StockStatus.LowStock or StockStatus.OutOfStock)
+                    .ToList(),
+                CriticalStocks = stocks
+                    .Where(s => s.Status == StockStatus.LowStock || s.Status == StockStatus.OutOfStock)
                     .OrderBy(s => s.Quantity)
                     .Take(5)
-                    .ToList();
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "Backend API'ye ulaşılamadı.");
-                dashboard.ApiUnavailable = true;
-            }
+                    .ToList()
+            };
 
             return View(dashboard);
         }

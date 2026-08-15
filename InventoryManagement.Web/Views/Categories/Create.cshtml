@@ -3,13 +3,12 @@
     ViewData["Title"] = "Yeni Kategori";
 }
 
-<div class="pt-4 mb-4">
-    <h2 class="page-title"><i class="bi bi-plus-circle-fill me-2"></i>Yeni Kategori</h2>
-</div>
+<h2 class="mt-4 mb-3">Yeni Kategori</h2>
 
-<div class="content-card" style="max-width: 640px;">
-    <form asp-action="Create" method="post">
-        <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none"></div>
+<div style="max-width: 600px;">
+    <form action="@Url.Action("Create")" method="post">
+        @Html.AntiForgeryToken()
+
         @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
         {
             <div class="alert alert-danger">
@@ -21,24 +20,24 @@
         }
 
         <div class="mb-3">
-            <label asp-for="Name" class="form-label"></label>
-            <input asp-for="Name" class="form-control" placeholder="Örn. Elektronik" />
-            <span asp-validation-for="Name" class="text-danger small"></span>
+            <label for="Name" class="form-label">Kategori Adı</label>
+            <input type="text" id="Name" name="Name" class="form-control" value="@Model.Name" />
+            @if (ViewData.ModelState["Name"]?.Errors.Count > 0)
+            {
+                <div class="text-danger">@ViewData.ModelState["Name"]!.Errors[0].ErrorMessage</div>
+            }
         </div>
 
         <div class="mb-3">
-            <label asp-for="Description" class="form-label"></label>
-            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Kısa açıklama (opsiyonel)"></textarea>
-            <span asp-validation-for="Description" class="text-danger small"></span>
+            <label for="Description" class="form-label">Açıklama</label>
+            <textarea id="Description" name="Description" class="form-control" rows="3">@Model.Description</textarea>
+            @if (ViewData.ModelState["Description"]?.Errors.Count > 0)
+            {
+                <div class="text-danger">@ViewData.ModelState["Description"]!.Errors[0].ErrorMessage</div>
+            }
         </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
-        </div>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Vazgeç</a>
     </form>
 </div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}

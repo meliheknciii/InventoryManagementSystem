@@ -1,5 +1,5 @@
 ﻿using InventoryManagement.Web.Models;
-using InventoryManagement.Web.Services;
+using InventoryManagement.Web.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -7,79 +7,83 @@ namespace InventoryManagement.Web.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly IProductApiClient _productApiClient;
-        private readonly ICategoryApiClient _categoryApiClient;
-        private readonly ILogger<ProductsController> _logger;
+        private readonly IProductRepository _productRepository;
+        private readonly ICategoryRepository _categoryRepository;
 
-        public ProductsController(
-            IProductApiClient productApiClient,
-            ICategoryApiClient categoryApiClient,
-            ILogger<ProductsController> logger)
+        public ProductsController(IProductRepository productRepository, ICategoryRepository categoryRepository)
         {
-            _productApiClient = productApiClient;
-            _categoryApiClient = categoryApiClient;
-            _logger = logger;
+            _productRepository = productRepository;
+            _categoryRepository = categoryRepository;
         }
 
-        public async Task<IActionResult> Index(CancellationToken cancellationToken)
+        // GET: /Products
+        public IActionResult Index()
         {
-            try
+            var products = _productRepository.GetAll();
+            return View(products);
+        }
+
+        // GET: /Products/Details/5
+        public IActionResult Details(int id)
+        {
+            var product = _productRepository.GetById(id);
+            if (product is null)
             {
-                var products = await _productApiClient.GetAllAsync(cancellationToken);
-                return View(products);
+                return NotFound();
             }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "Ürünler alınırken API'ye ulaşılamadı.");
-                TempData["ErrorMessage"] = "Backend API'ye ulaşılamadı. Lütfen API'nin çalıştığından emin olun.";
-                return View(new List<ProductViewModel>());
-            }
+
+            return View(product);
         }
 
-        public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)
-        {
-            var product = await _productApiClient.GetByIdAsync(id, cancellationToken);
-            return product is null ? NotFound() : View(product);
-        }
-
+        // GET: /Products/Create
         [HttpGet]
-        public async Task<IActionResult> Create(CancellationToken cancellationToken)
+        public IActionResult Create()
         {
             var model = new ProductFormViewModel
             {
-                CategoryOptions = await BuildCategoryOptionsAsync(cancellationToken)
+                CategoryOptions = BuildCategoryOptions()
             };
             return View(model);
         }
 
+        // POST: /Products/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ProductFormViewModel model, CancellationToken cancellationToken)
+        public IActionResult Create(ProductFormViewModel model)
         {
             if (!ModelState.IsValid)
             {
-                model.CategoryOptions = await BuildCategoryOptionsAsync(cancellationToken, model.CategoryId);
+                model.CategoryOptions = BuildCategoryOptions(model.CategoryId);
                 return View(model);
             }
 
-            try
+            if (_productRepository.SkuExists(model.Sku))
             {
-                await _productApiClient.CreateAsync(model, cancellationToken);
-                TempData["SuccessMessage"] = $"'{model.Name}' ürünü oluşturuldu.";
-                return RedirectToAction(nameof(Index));
-            }
-            catch (ApiException ex)
-            {
-                ModelState.AddModelError(string.Empty, ex.Message);
-                model.CategoryOptions = await BuildCategoryOptionsAsync(cancellationToken, model.CategoryId);
+                ModelState.AddModelError(nameof(model.Sku), "Bu SKU değeri zaten kullanılıyor.");
+                model.CategoryOptions = BuildCategoryOptions(model.CategoryId);
                 return View(model);
             }
+
+            var product = new Product
+            {
+                Name = model.Name,
+                Description = model.Description,
+                Sku = model.Sku,
+                Price = model.Price,
+                CategoryId = model.CategoryId
+            };
+
+            _productRepository.Add(product);
+
+            TempData["SuccessMessage"] = $"'{product.Name}' ürünü oluşturuldu.";
+            return RedirectToAction(nameof(Index));
         }
 
+        // GET: /Products/Edit/5
         [HttpGet]
-        public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken)
+        public IActionResult Edit(int id)
         {
-            var product = await _productApiClient.GetByIdAsync(id, cancellationToken);
+            var product = _productRepository.GetById(id);
             if (product is null)
             {
                 return NotFound();
@@ -92,59 +96,72 @@ namespace InventoryManagement.Web.Controllers
                 Sku = product.Sku,
                 Price = product.Price,
                 CategoryId = product.CategoryId,
-                CategoryOptions = await BuildCategoryOptionsAsync(cancellationToken, product.CategoryId)
+                CategoryOptions = BuildCategoryOptions(product.CategoryId)
             };
 
             ViewBag.ProductId = id;
             return View(model);
         }
 
+        // POST: /Products/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, ProductFormViewModel model, CancellationToken cancellationToken)
+        public IActionResult Edit(int id, ProductFormViewModel model)
         {
+            ViewBag.ProductId = id;
+
             if (!ModelState.IsValid)
             {
-                model.CategoryOptions = await BuildCategoryOptionsAsync(cancellationToken, model.CategoryId);
-                ViewBag.ProductId = id;
+                model.CategoryOptions = BuildCategoryOptions(model.CategoryId);
                 return View(model);
             }
 
-            try
+            var product = _productRepository.GetById(id);
+            if (product is null)
             {
-                await _productApiClient.UpdateAsync(id, model, cancellationToken);
-                TempData["SuccessMessage"] = $"'{model.Name}' ürünü güncellendi.";
-                return RedirectToAction(nameof(Index));
+                return NotFound();
             }
-            catch (ApiException ex)
+
+            if (_productRepository.SkuExists(model.Sku, id))
             {
-                ModelState.AddModelError(string.Empty, ex.Message);
-                model.CategoryOptions = await BuildCategoryOptionsAsync(cancellationToken, model.CategoryId);
-                ViewBag.ProductId = id;
+                ModelState.AddModelError(nameof(model.Sku), "Bu SKU değeri zaten kullanılıyor.");
+                model.CategoryOptions = BuildCategoryOptions(model.CategoryId);
                 return View(model);
             }
+
+            product.Name = model.Name;
+            product.Description = model.Description;
+            product.Sku = model.Sku;
+            product.Price = model.Price;
+            product.CategoryId = model.CategoryId;
+
+            _productRepository.Update(product);
+
+            TempData["SuccessMessage"] = $"'{product.Name}' ürünü güncellendi.";
+            return RedirectToAction(nameof(Index));
         }
 
+        // POST: /Products/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+        public IActionResult Delete(int id)
         {
-            try
+            var product = _productRepository.GetById(id);
+            if (product is null)
             {
-                await _productApiClient.DeleteAsync(id, cancellationToken);
-                TempData["SuccessMessage"] = "Ürün silindi.";
+                return NotFound();
             }
-            catch (ApiException ex)
-            {
-                TempData["ErrorMessage"] = ex.Message;
-            }
+
+            _productRepository.Delete(product);
+            TempData["SuccessMessage"] = "Ürün silindi.";
 
             return RedirectToAction(nameof(Index));
         }
 
-        private async Task<List<SelectListItem>> BuildCategoryOptionsAsync(CancellationToken cancellationToken, int? selectedId = null)
+        // Kategori dropdown listesini hazırlayan yardımcı (helper) metot.
+        private List<SelectListItem> BuildCategoryOptions(int? selectedId = null)
         {
-            var categories = await _categoryApiClient.GetAllAsync(cancellationToken);
+            var categories = _categoryRepository.GetAll();
             return categories
                 .Select(c => new SelectListItem(c.Name, c.Id.ToString(), c.Id == selectedId))
                 .ToList();

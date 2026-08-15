@@ -1,30 +1,29 @@
-﻿@model InventoryManagement.Web.Models.ProductViewModel
+﻿@model InventoryManagement.Web.Models.Product
 @{
     ViewData["Title"] = "Ürün Detayı";
 }
 
-<div class="pt-4 mb-4 d-flex justify-content-between align-items-center">
-    <h2 class="page-title mb-0"><i class="bi bi-box2-fill me-2"></i>@Model.Name</h2>
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <h2>@Model.Name</h2>
     <div>
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
-            <i class="bi bi-pencil-square me-1"></i>Düzenle
-        </a>
-        <a asp-action="Index" class="btn btn-outline-secondary">Listeye Dön</a>
+        <a href="@Url.Action("Edit", new { id = Model.Id })" class="btn btn-outline-primary">Düzenle</a>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Listeye Dön</a>
     </div>
 </div>
 
-<div class="content-card" style="max-width: 720px;">
-    <dl class="row mb-0">
-        <dt class="col-sm-3">SKU</dt>
-        <dd class="col-sm-9"><span class="badge bg-light text-dark border">@Model.Sku</span></dd>
+<dl class="row" style="max-width: 700px;">
+    <dt class="col-sm-3">SKU</dt>
+    <dd class="col-sm-9">@Model.Sku</dd>
 
-        <dt class="col-sm-3">Kategori</dt>
-        <dd class="col-sm-9">@(Model.CategoryName ?? "-")</dd>
+    <dt class="col-sm-3">Kategori</dt>
+    <dd class="col-sm-9">@(Model.Category?.Name ?? "-")</dd>
 
-        <dt class="col-sm-3">Fiyat</dt>
-        <dd class="col-sm-9">@Model.Price.ToString("C")</dd>
+    <dt class="col-sm-3">Fiyat</dt>
+    <dd class="col-sm-9">@Model.Price.ToString("C")</dd>
 
-        <dt class="col-sm-3">Açıklama</dt>
-        <dd class="col-sm-9">@(Model.Description ?? "-")</dd>
-    </dl>
-</div>
+    <dt class="col-sm-3">Açıklama</dt>
+    <dd class="col-sm-9">@(Model.Description ?? "-")</dd>
+
+    <dt class="col-sm-3">Stok Miktarı</dt>
+    <dd class="col-sm-9">@(Model.Stock?.Quantity.ToString() ?? "Stok kaydı yok")</dd>
+</dl>

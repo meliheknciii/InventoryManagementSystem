@@ -3,12 +3,12 @@
     ViewData["Title"] = "Ürün Düzenle";
 }
 
-<div class="pt-4 mb-4">
-    <h2 class="page-title"><i class="bi bi-pencil-square me-2"></i>Ürün Düzenle</h2>
-</div>
+<h2 class="mt-4 mb-3">Ürün Düzenle</h2>
 
-<div class="content-card" style="max-width: 720px;">
-    <form asp-action="Edit" asp-route-id="@ViewBag.ProductId" method="post">
+<div style="max-width: 700px;">
+    <form action="@Url.Action("Edit", new { id = ViewBag.ProductId })" method="post">
+        @Html.AntiForgeryToken()
+
         @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
         {
             <div class="alert alert-danger">
@@ -21,48 +21,65 @@
 
         <div class="row">
             <div class="col-md-8 mb-3">
-                <label asp-for="Name" class="form-label"></label>
-                <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger small"></span>
+                <label for="Name" class="form-label">Ürün Adı</label>
+                <input type="text" id="Name" name="Name" class="form-control" value="@Model.Name" />
+                @if (ViewData.ModelState["Name"]?.Errors.Count > 0)
+                {
+                    <div class="text-danger">@ViewData.ModelState["Name"]!.Errors[0].ErrorMessage</div>
+                }
             </div>
             <div class="col-md-4 mb-3">
-                <label asp-for="Sku" class="form-label"></label>
-                <input asp-for="Sku" class="form-control" />
-                <span asp-validation-for="Sku" class="text-danger small"></span>
+                <label for="Sku" class="form-label">SKU</label>
+                <input type="text" id="Sku" name="Sku" class="form-control" value="@Model.Sku" />
+                @if (ViewData.ModelState["Sku"]?.Errors.Count > 0)
+                {
+                    <div class="text-danger">@ViewData.ModelState["Sku"]!.Errors[0].ErrorMessage</div>
+                }
             </div>
         </div>
 
         <div class="mb-3">
-            <label asp-for="Description" class="form-label"></label>
-            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-            <span asp-validation-for="Description" class="text-danger small"></span>
+            <label for="Description" class="form-label">Açıklama</label>
+            <textarea id="Description" name="Description" class="form-control" rows="3">@Model.Description</textarea>
+            @if (ViewData.ModelState["Description"]?.Errors.Count > 0)
+            {
+                <div class="text-danger">@ViewData.ModelState["Description"]!.Errors[0].ErrorMessage</div>
+            }
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label asp-for="Price" class="form-label"></label>
-                <div class="input-group">
-                    <span class="input-group-text">₺</span>
-                    <input asp-for="Price" class="form-control" type="number" step="0.01" min="0.01" />
-                </div>
-                <span asp-validation-for="Price" class="text-danger small"></span>
+                <label for="Price" class="form-label">Fiyat</label>
+                <input type="number" id="Price" name="Price" class="form-control" step="0.01" min="0.01" value="@Model.Price" />
+                @if (ViewData.ModelState["Price"]?.Errors.Count > 0)
+                {
+                    <div class="text-danger">@ViewData.ModelState["Price"]!.Errors[0].ErrorMessage</div>
+                }
             </div>
             <div class="col-md-6 mb-3">
-                <label asp-for="CategoryId" class="form-label"></label>
-                <select asp-for="CategoryId" class="form-select" asp-items="Model.CategoryOptions">
+                <label for="CategoryId" class="form-label">Kategori</label>
+                <select id="CategoryId" name="CategoryId" class="form-select">
                     <option value="">-- Kategori Seçiniz --</option>
+                    @foreach (var option in Model.CategoryOptions)
+                    {
+                        @if (option.Selected)
+                        {
+                            <option value="@option.Value" selected="selected">@option.Text</option>
+                        }
+                        else
+                        {
+                            <option value="@option.Value">@option.Text</option>
+                        }
+                    }
                 </select>
-                <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                @if (ViewData.ModelState["CategoryId"]?.Errors.Count > 0)
+                {
+                    <div class="text-danger">@ViewData.ModelState["CategoryId"]!.Errors[0].ErrorMessage</div>
+                }
             </div>
         </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Güncelle</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
-        </div>
+        <button type="submit" class="btn btn-primary">Güncelle</button>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Vazgeç</a>
     </form>
 </div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}

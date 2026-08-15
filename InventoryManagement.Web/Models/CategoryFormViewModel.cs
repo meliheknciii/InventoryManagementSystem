@@ -1,10 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace InventoryManagement.Web.Models
 {
-    /// <summary>
-    /// Bound model used by the Create/Edit category forms.
-    /// </summary>
+    // Kategori Ekle / Düzenle formlarında kullanılan model.
     public class CategoryFormViewModel
     {
         [Display(Name = "Kategori Adı")]

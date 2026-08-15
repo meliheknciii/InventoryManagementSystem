@@ -1,67 +1,67 @@
 ﻿using InventoryManagement.Web.Models;
-using InventoryManagement.Web.Services;
+using InventoryManagement.Web.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InventoryManagement.Web.Controllers
 {
     public class CategoriesController : Controller
     {
-        private readonly ICategoryApiClient _categoryApiClient;
-        private readonly ILogger<CategoriesController> _logger;
+        // Constructor Injection: ihtiyacımız olan repository'yi
+        // Program.cs içinde DI container'a kaydettik, ASP.NET Core bize burada otomatik veriyor.
+        private readonly ICategoryRepository _categoryRepository;
 
-        public CategoriesController(ICategoryApiClient categoryApiClient, ILogger<CategoriesController> logger)
+        public CategoriesController(ICategoryRepository categoryRepository)
         {
-            _categoryApiClient = categoryApiClient;
-            _logger = logger;
+            _categoryRepository = categoryRepository;
         }
 
-        public async Task<IActionResult> Index(CancellationToken cancellationToken)
+        // GET: /Categories
+        public IActionResult Index()
         {
-            try
-            {
-                var categories = await _categoryApiClient.GetAllAsync(cancellationToken);
-                return View(categories);
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "Kategoriler alınırken API'ye ulaşılamadı.");
-                TempData["ErrorMessage"] = "Backend API'ye ulaşılamadı. Lütfen API'nin çalıştığından emin olun.";
-                return View(new List<CategoryViewModel>());
-            }
+            var categories = _categoryRepository.GetAll();
+            return View(categories);
         }
 
+        // GET: /Categories/Create
         [HttpGet]
         public IActionResult Create()
         {
             return View(new CategoryFormViewModel());
         }
 
+        // POST: /Categories/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(CategoryFormViewModel model, CancellationToken cancellationToken)
+        public IActionResult Create(CategoryFormViewModel model)
         {
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-            try
+            if (_categoryRepository.NameExists(model.Name))
             {
-                await _categoryApiClient.CreateAsync(model, cancellationToken);
-                TempData["SuccessMessage"] = $"'{model.Name}' kategorisi oluşturuldu.";
-                return RedirectToAction(nameof(Index));
-            }
-            catch (ApiException ex)
-            {
-                ModelState.AddModelError(string.Empty, ex.Message);
+                ModelState.AddModelError(nameof(model.Name), "Bu isimde bir kategori zaten var.");
                 return View(model);
             }
+
+            var category = new Category
+            {
+                Name = model.Name,
+                Description = model.Description
+            };
+
+            _categoryRepository.Add(category);
+
+            TempData["SuccessMessage"] = $"'{category.Name}' kategorisi oluşturuldu.";
+            return RedirectToAction(nameof(Index));
         }
 
+        // GET: /Categories/Edit/5
         [HttpGet]
-        public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken)
+        public IActionResult Edit(int id)
         {
-            var category = await _categoryApiClient.GetByIdAsync(id, cancellationToken);
+            var category = _categoryRepository.GetById(id);
             if (category is null)
             {
                 return NotFound();
@@ -77,42 +77,59 @@ namespace InventoryManagement.Web.Controllers
             return View(model);
         }
 
+        // POST: /Categories/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, CategoryFormViewModel model, CancellationToken cancellationToken)
+        public IActionResult Edit(int id, CategoryFormViewModel model)
         {
+            ViewBag.CategoryId = id;
+
             if (!ModelState.IsValid)
             {
-                ViewBag.CategoryId = id;
                 return View(model);
             }
 
-            try
+            var category = _categoryRepository.GetById(id);
+            if (category is null)
             {
-                await _categoryApiClient.UpdateAsync(id, model, cancellationToken);
-                TempData["SuccessMessage"] = $"'{model.Name}' kategorisi güncellendi.";
-                return RedirectToAction(nameof(Index));
+                return NotFound();
             }
-            catch (ApiException ex)
+
+            if (_categoryRepository.NameExists(model.Name, id))
             {
-                ModelState.AddModelError(string.Empty, ex.Message);
-                ViewBag.CategoryId = id;
+                ModelState.AddModelError(nameof(model.Name), "Bu isimde bir kategori zaten var.");
                 return View(model);
             }
+
+            category.Name = model.Name;
+            category.Description = model.Description;
+
+            _categoryRepository.Update(category);
+
+            TempData["SuccessMessage"] = $"'{category.Name}' kategorisi güncellendi.";
+            return RedirectToAction(nameof(Index));
         }
 
+        // POST: /Categories/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+        public IActionResult Delete(int id)
         {
+            var category = _categoryRepository.GetById(id);
+            if (category is null)
+            {
+                return NotFound();
+            }
+
             try
             {
-                await _categoryApiClient.DeleteAsync(id, cancellationToken);
+                _categoryRepository.Delete(category);
                 TempData["SuccessMessage"] = "Kategori silindi.";
             }
-            catch (ApiException ex)
+            catch (Exception)
             {
-                TempData["ErrorMessage"] = ex.Message;
+                // Kategoriye bağlı ürün varsa veritabanı silmeye izin vermez (Restrict).
+                TempData["ErrorMessage"] = "Bu kategoriye bağlı ürünler olduğu için silinemedi.";
             }
 
             return RedirectToAction(nameof(Index));

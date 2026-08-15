@@ -1,5 +1,5 @@
 ﻿using InventoryManagement.Web.Models;
-using InventoryManagement.Web.Services;
+using InventoryManagement.Web.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -7,73 +7,82 @@ namespace InventoryManagement.Web.Controllers
 {
     public class StocksController : Controller
     {
-        private readonly IStockApiClient _stockApiClient;
-        private readonly IProductApiClient _productApiClient;
-        private readonly ILogger<StocksController> _logger;
+        // Stok miktarı bu değerin altına düşünce "Az Stok" olarak işaretlenecek.
+        private const int LowStockThreshold = 10;
 
-        public StocksController(
-            IStockApiClient stockApiClient,
-            IProductApiClient productApiClient,
-            ILogger<StocksController> logger)
+        private readonly IStockRepository _stockRepository;
+        private readonly IProductRepository _productRepository;
+
+        public StocksController(IStockRepository stockRepository, IProductRepository productRepository)
         {
-            _stockApiClient = stockApiClient;
-            _productApiClient = productApiClient;
-            _logger = logger;
+            _stockRepository = stockRepository;
+            _productRepository = productRepository;
         }
 
-        public async Task<IActionResult> Index(CancellationToken cancellationToken)
+        // GET: /Stocks
+        public IActionResult Index()
         {
-            try
-            {
-                var stocks = await _stockApiClient.GetAllAsync(cancellationToken);
-                return View(stocks);
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "Stoklar alınırken API'ye ulaşılamadı.");
-                TempData["ErrorMessage"] = "Backend API'ye ulaşılamadı. Lütfen API'nin çalıştığından emin olun.";
-                return View(new List<StockViewModel>());
-            }
+            var stocks = _stockRepository.GetAll();
+            return View(stocks);
         }
 
+        // GET: /Stocks/Create
         [HttpGet]
-        public async Task<IActionResult> Create(CancellationToken cancellationToken)
+        public IActionResult Create()
         {
             var model = new StockFormViewModel
             {
-                ProductOptions = await BuildProductOptionsAsync(cancellationToken)
+                ProductOptions = BuildProductOptions()
             };
             return View(model);
         }
 
+        // POST: /Stocks/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(StockFormViewModel model, CancellationToken cancellationToken)
+        public IActionResult Create(StockFormViewModel model)
         {
             if (!ModelState.IsValid)
             {
-                model.ProductOptions = await BuildProductOptionsAsync(cancellationToken, model.ProductId);
+                model.ProductOptions = BuildProductOptions(model.ProductId);
                 return View(model);
             }
 
-            try
+            var product = _productRepository.GetById(model.ProductId);
+            if (product is null)
             {
-                await _stockApiClient.CreateAsync(model, cancellationToken);
-                TempData["SuccessMessage"] = "Stok kaydı oluşturuldu.";
-                return RedirectToAction(nameof(Index));
-            }
-            catch (ApiException ex)
-            {
-                ModelState.AddModelError(string.Empty, ex.Message);
-                model.ProductOptions = await BuildProductOptionsAsync(cancellationToken, model.ProductId);
+                ModelState.AddModelError(nameof(model.ProductId), "Seçilen ürün bulunamadı.");
+                model.ProductOptions = BuildProductOptions(model.ProductId);
                 return View(model);
             }
+
+            var existingStock = _stockRepository.GetByProductId(model.ProductId);
+            if (existingStock is not null)
+            {
+                ModelState.AddModelError(nameof(model.ProductId), "Bu ürünün zaten bir stok kaydı var.");
+                model.ProductOptions = BuildProductOptions(model.ProductId);
+                return View(model);
+            }
+
+            var stock = new Stock
+            {
+                ProductId = model.ProductId,
+                Quantity = model.Quantity,
+                Status = CalculateStatus(model.Quantity),
+                LastUpdatedUtc = DateTime.UtcNow
+            };
+
+            _stockRepository.Add(stock);
+
+            TempData["SuccessMessage"] = "Stok kaydı oluşturuldu.";
+            return RedirectToAction(nameof(Index));
         }
 
+        // GET: /Stocks/Edit/5
         [HttpGet]
-        public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken)
+        public IActionResult Edit(int id)
         {
-            var stock = await _stockApiClient.GetByIdAsync(id, cancellationToken);
+            var stock = _stockRepository.GetById(id);
             if (stock is null)
             {
                 return NotFound();
@@ -84,62 +93,82 @@ namespace InventoryManagement.Web.Controllers
                 ProductId = stock.ProductId,
                 Quantity = stock.Quantity,
                 IsEdit = true,
-                ProductOptions = await BuildProductOptionsAsync(cancellationToken, stock.ProductId)
+                ProductOptions = BuildProductOptions(stock.ProductId)
             };
 
             ViewBag.StockId = id;
-            ViewBag.ProductName = stock.ProductName;
+            ViewBag.ProductName = stock.Product?.Name;
             return View(model);
         }
 
+        // POST: /Stocks/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, StockFormViewModel model, CancellationToken cancellationToken)
+        public IActionResult Edit(int id, StockFormViewModel model)
         {
             model.IsEdit = true;
+            ViewBag.StockId = id;
 
             if (!ModelState.IsValid)
             {
-                model.ProductOptions = await BuildProductOptionsAsync(cancellationToken, model.ProductId);
-                ViewBag.StockId = id;
+                model.ProductOptions = BuildProductOptions(model.ProductId);
                 return View(model);
             }
 
-            try
+            var stock = _stockRepository.GetById(id);
+            if (stock is null)
             {
-                await _stockApiClient.UpdateAsync(id, model, cancellationToken);
-                TempData["SuccessMessage"] = "Stok kaydı güncellendi.";
-                return RedirectToAction(nameof(Index));
+                return NotFound();
             }
-            catch (ApiException ex)
-            {
-                ModelState.AddModelError(string.Empty, ex.Message);
-                model.ProductOptions = await BuildProductOptionsAsync(cancellationToken, model.ProductId);
-                ViewBag.StockId = id;
-                return View(model);
-            }
+
+            // Ürün bilgisi değiştirilmiyor, sadece miktar güncelleniyor.
+            stock.Quantity = model.Quantity;
+            stock.Status = CalculateStatus(model.Quantity);
+            stock.LastUpdatedUtc = DateTime.UtcNow;
+
+            _stockRepository.Update(stock);
+
+            TempData["SuccessMessage"] = "Stok kaydı güncellendi.";
+            return RedirectToAction(nameof(Index));
         }
 
+        // POST: /Stocks/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+        public IActionResult Delete(int id)
         {
-            try
+            var stock = _stockRepository.GetById(id);
+            if (stock is null)
             {
-                await _stockApiClient.DeleteAsync(id, cancellationToken);
-                TempData["SuccessMessage"] = "Stok kaydı silindi.";
+                return NotFound();
             }
-            catch (ApiException ex)
-            {
-                TempData["ErrorMessage"] = ex.Message;
-            }
+
+            _stockRepository.Delete(stock);
+            TempData["SuccessMessage"] = "Stok kaydı silindi.";
 
             return RedirectToAction(nameof(Index));
         }
 
-        private async Task<List<SelectListItem>> BuildProductOptionsAsync(CancellationToken cancellationToken, int? selectedId = null)
+        // Miktara göre stok durumunu hesaplayan yardımcı metot.
+        private static StockStatus CalculateStatus(int quantity)
         {
-            var products = await _productApiClient.GetAllAsync(cancellationToken);
+            if (quantity <= 0)
+            {
+                return StockStatus.OutOfStock;
+            }
+
+            if (quantity <= LowStockThreshold)
+            {
+                return StockStatus.LowStock;
+            }
+
+            return StockStatus.InStock;
+        }
+
+        // Ürün dropdown listesini hazırlayan yardımcı metot.
+        private List<SelectListItem> BuildProductOptions(int? selectedId = null)
+        {
+            var products = _productRepository.GetAll();
             return products
                 .Select(p => new SelectListItem($"{p.Name} ({p.Sku})", p.Id.ToString(), p.Id == selectedId))
                 .ToList();
