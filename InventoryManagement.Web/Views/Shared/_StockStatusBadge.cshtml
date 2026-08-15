@@ -1,0 +1,12 @@
+@model InventoryManagement.Web.Models.StockStatus
+
+@{
+    var (cssClass, text, icon) = Model switch
+    {
+        InventoryManagement.Web.Models.StockStatus.InStock => ("badge-status-instock", "Stokta", "bi-check-circle-fill"),
+        InventoryManagement.Web.Models.StockStatus.LowStock => ("badge-status-lowstock", "Az Stok", "bi-exclamation-triangle-fill"),
+        _ => ("badge-status-outofstock", "Tükendi", "bi-x-circle-fill")
+    };
+}
+
+<span class="badge @cssClass"><i class="bi @icon me-1"></i>@text</span>
