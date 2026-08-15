@@ -1,12 +1,25 @@
 @model InventoryManagement.Web.Models.StockStatus
 
 @{
-    var (cssClass, text, icon) = Model switch
+    // Stok durumuna göre farklı renkte bir Bootstrap badge (etiket) gösteriyoruz.
+    string cssClass;
+    string text;
+
+    switch (Model)
     {
-        InventoryManagement.Web.Models.StockStatus.InStock => ("badge-status-instock", "Stokta", "bi-check-circle-fill"),
-        InventoryManagement.Web.Models.StockStatus.LowStock => ("badge-status-lowstock", "Az Stok", "bi-exclamation-triangle-fill"),
-        _ => ("badge-status-outofstock", "Tükendi", "bi-x-circle-fill")
-    };
+        case InventoryManagement.Web.Models.StockStatus.InStock:
+            cssClass = "bg-success";
+            text = "Stokta";
+            break;
+        case InventoryManagement.Web.Models.StockStatus.LowStock:
+            cssClass = "bg-warning text-dark";
+            text = "Az Stok";
+            break;
+        default:
+            cssClass = "bg-danger";
+            text = "Tükendi";
+            break;
+    }
 }
 
-<span class="badge @cssClass"><i class="bi @icon me-1"></i>@text</span>
+<span class="badge @cssClass">@text</span>

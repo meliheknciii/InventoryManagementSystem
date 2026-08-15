@@ -1,4 +1,6 @@
-using InventoryManagement.Web.Services;
+using InventoryManagement.Web.Data;
+using InventoryManagement.Web.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManagement.Web
 {
@@ -8,32 +10,29 @@ namespace InventoryManagement.Web
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // MVC için Controller ve View desteğini ekliyoruz.
             builder.Services.AddControllersWithViews();
 
-            var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"]
-                ?? throw new InvalidOperationException("Configuration 'ApiSettings:BaseUrl' was not found.");
+            // Veritabanı bağlantı bilgisini appsettings.json'dan okuyoruz.
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' bulunamadı.");
 
-            builder.Services.AddHttpClient<ICategoryApiClient, CategoryApiClient>(client =>
-            {
-                client.BaseAddress = new Uri(apiBaseUrl);
-            });
-            builder.Services.AddHttpClient<IProductApiClient, ProductApiClient>(client =>
-            {
-                client.BaseAddress = new Uri(apiBaseUrl);
-            });
-            builder.Services.AddHttpClient<IStockApiClient, StockApiClient>(client =>
-            {
-                client.BaseAddress = new Uri(apiBaseUrl);
-            });
+            // EF Core DbContext'i DI container'a kaydediyoruz.
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(connectionString));
+
+            // Repository'leri DI container'a kaydediyoruz.
+            // AddScoped: her HTTP isteğinde yeni bir örnek (instance) oluşturulur.
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IStockRepository, StockRepository>();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // HTTP pipeline (istek/cevap boru hattı) yapılandırması.
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 

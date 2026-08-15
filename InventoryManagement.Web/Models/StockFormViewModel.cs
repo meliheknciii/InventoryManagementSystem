@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace InventoryManagement.Web.Models
 {
-    /// <summary>
-    /// Bound model used by the Create/Edit stock forms.
-    /// </summary>
+    // Stok Ekle / Düzenle formlarında kullanılan model.
     public class StockFormViewModel
     {
         [Display(Name = "Ürün")]
@@ -16,15 +14,11 @@ namespace InventoryManagement.Web.Models
         [Range(0, int.MaxValue, ErrorMessage = "Stok miktarı negatif olamaz.")]
         public int Quantity { get; set; }
 
-        /// <summary>
-        /// Populated by the controller for rendering the product dropdown; not sent to the API.
-        /// </summary>
-        public List<SelectListItem> ProductOptions { get; set; } = new();
+        // Formda ürün seçim kutusunu (dropdown) doldurmak için kullanılıyor.
+        public List<SelectListItem> ProductOptions { get; set; } = new List<SelectListItem>();
 
-        /// <summary>
-        /// True when editing an existing stock record (disables the product selector,
-        /// since a product can only have one stock record).
-        /// </summary>
+        // Düzenleme ekranında true olur, bu durumda ürün seçimi kilitlenir
+        // çünkü bir ürünün sadece bir stok kaydı olabilir.
         public bool IsEdit { get; set; }
     }
 }

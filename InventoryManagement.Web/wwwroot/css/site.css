@@ -8,10 +8,6 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
 html {
   position: relative;
   min-height: 100%;
@@ -19,84 +15,12 @@ html {
 
 body {
   margin-bottom: 60px;
-  background-color: #f4f6f9;
 }
 
-/* ---------- Navbar ---------- */
-.app-navbar {
-  background: linear-gradient(90deg, #1f3c88 0%, #2b5cb8 100%);
-}
-
-.app-navbar .nav-link {
-  color: rgba(255, 255, 255, 0.85);
-  font-weight: 500;
-}
-
-.app-navbar .nav-link:hover,
-.app-navbar .nav-link.active {
-  color: #ffffff;
-}
-
-.app-navbar .navbar-brand {
-  color: #ffffff;
-}
-
-/* ---------- Cards / Stats ---------- */
-.stat-card {
-  border: none;
-  border-radius: 0.75rem;
-  color: #fff;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
-  transition: transform 0.15s ease-in-out;
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-}
-
-.stat-card .stat-icon {
-  font-size: 2.25rem;
-  opacity: 0.85;
-}
-
-.stat-card.bg-categories { background: linear-gradient(135deg, #1f3c88, #4468c9); }
-.stat-card.bg-products { background: linear-gradient(135deg, #0f9b8e, #17c6b6); }
-.stat-card.bg-low-stock { background: linear-gradient(135deg, #e0a800, #f4c542); }
-.stat-card.bg-out-of-stock { background: linear-gradient(135deg, #c62828, #e05353); }
-
-/* ---------- Page cards / tables ---------- */
-.content-card {
-  background: #ffffff;
-  border-radius: 0.75rem;
-  border: 1px solid #e9ecef;
-  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.05);
-  padding: 1.5rem;
-}
-
-.table thead th {
-  border-bottom-width: 1px;
-  color: #6c757d;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
-}
-
-.table-hover tbody tr:hover {
-  background-color: #f1f5fb;
-}
-
-/* ---------- Status badges ---------- */
-.badge-status-instock { background-color: #17c6b6; }
-.badge-status-lowstock { background-color: #f4c542; color: #6b4d00; }
-.badge-status-outofstock { background-color: #e05353; }
-
-.page-title {
-  font-weight: 600;
-  color: #1f3c88;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #8a94a6;
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  white-space: nowrap;
+  line-height: 60px;
 }
