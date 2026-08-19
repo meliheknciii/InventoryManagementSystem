@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Uygulamanın çalışırken oluşturduğu log dosyaları
+InventoryManagement.Web/Logs/
+
 # User-specific files
 *.rsuser
 *.suo

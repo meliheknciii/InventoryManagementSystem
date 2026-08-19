@@ -9,18 +9,29 @@ namespace InventoryManagement.Web.Controllers
     {
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(IProductRepository productRepository, ICategoryRepository categoryRepository)
+        public ProductsController(IProductRepository productRepository, ICategoryRepository categoryRepository, ILogger<ProductsController> logger)
         {
             _productRepository = productRepository;
             _categoryRepository = categoryRepository;
+            _logger = logger;
         }
 
         // GET: /Products
-        public IActionResult Index()
+        public IActionResult Index(string? searchTerm, int? categoryId)
         {
-            var products = _productRepository.GetAll();
-            return View(products);
+            var products = _productRepository.Search(searchTerm, categoryId);
+
+            var model = new ProductListViewModel
+            {
+                Products = products,
+                SearchTerm = searchTerm,
+                CategoryId = categoryId,
+                CategoryOptions = BuildCategoryOptions(categoryId)
+            };
+
+            return View(model);
         }
 
         // GET: /Products/Details/5
@@ -29,6 +40,7 @@ namespace InventoryManagement.Web.Controllers
             var product = _productRepository.GetById(id);
             if (product is null)
             {
+                _logger.LogWarning("Detayı istenen ürün bulunamadı. Id: {UrunId}", id);
                 return NotFound();
             }
 
@@ -59,6 +71,7 @@ namespace InventoryManagement.Web.Controllers
 
             if (_productRepository.SkuExists(model.Sku))
             {
+                _logger.LogWarning("Ürün eklenemedi çünkü '{Sku}' SKU değeri zaten kullanılıyor.", model.Sku);
                 ModelState.AddModelError(nameof(model.Sku), "Bu SKU değeri zaten kullanılıyor.");
                 model.CategoryOptions = BuildCategoryOptions(model.CategoryId);
                 return View(model);
@@ -75,6 +88,8 @@ namespace InventoryManagement.Web.Controllers
 
             _productRepository.Add(product);
 
+            _logger.LogInformation("Yeni ürün oluşturuldu. Id: {UrunId}, Ad: {UrunAdi}", product.Id, product.Name);
+
             TempData["SuccessMessage"] = $"'{product.Name}' ürünü oluşturuldu.";
             return RedirectToAction(nameof(Index));
         }
@@ -86,6 +101,7 @@ namespace InventoryManagement.Web.Controllers
             var product = _productRepository.GetById(id);
             if (product is null)
             {
+                _logger.LogWarning("Düzenlenmek istenen ürün bulunamadı. Id: {UrunId}", id);
                 return NotFound();
             }
 
@@ -119,11 +135,13 @@ namespace InventoryManagement.Web.Controllers
             var product = _productRepository.GetById(id);
             if (product is null)
             {
+                _logger.LogWarning("Güncellenmek istenen ürün bulunamadı. Id: {UrunId}", id);
                 return NotFound();
             }
 
             if (_productRepository.SkuExists(model.Sku, id))
             {
+                _logger.LogWarning("Ürün güncellenemedi çünkü '{Sku}' SKU değeri zaten kullanılıyor.", model.Sku);
                 ModelState.AddModelError(nameof(model.Sku), "Bu SKU değeri zaten kullanılıyor.");
                 model.CategoryOptions = BuildCategoryOptions(model.CategoryId);
                 return View(model);
@@ -137,6 +155,8 @@ namespace InventoryManagement.Web.Controllers
 
             _productRepository.Update(product);
 
+            _logger.LogInformation("Ürün güncellendi. Id: {UrunId}, Ad: {UrunAdi}", product.Id, product.Name);
+
             TempData["SuccessMessage"] = $"'{product.Name}' ürünü güncellendi.";
             return RedirectToAction(nameof(Index));
         }
@@ -149,16 +169,18 @@ namespace InventoryManagement.Web.Controllers
             var product = _productRepository.GetById(id);
             if (product is null)
             {
+                _logger.LogWarning("Silinmek istenen ürün bulunamadı. Id: {UrunId}", id);
                 return NotFound();
             }
 
             _productRepository.Delete(product);
+            _logger.LogInformation("Ürün silindi. Id: {UrunId}, Ad: {UrunAdi}", product.Id, product.Name);
             TempData["SuccessMessage"] = "Ürün silindi.";
 
             return RedirectToAction(nameof(Index));
         }
 
-        // Kategori dropdown listesini hazırlayan yardımcı (helper) metot.
+        // Kategori dropdown listesini hazırlayan yardımcı (helper) metot
         private List<SelectListItem> BuildCategoryOptions(int? selectedId = null)
         {
             var categories = _categoryRepository.GetAll();

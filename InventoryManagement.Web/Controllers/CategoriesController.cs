@@ -6,13 +6,13 @@ namespace InventoryManagement.Web.Controllers
 {
     public class CategoriesController : Controller
     {
-        // Constructor Injection: ihtiyacımız olan repository'yi
-        // Program.cs içinde DI container'a kaydettik, ASP.NET Core bize burada otomatik veriyor.
         private readonly ICategoryRepository _categoryRepository;
+        private readonly ILogger<CategoriesController> _logger;
 
-        public CategoriesController(ICategoryRepository categoryRepository)
+        public CategoriesController(ICategoryRepository categoryRepository, ILogger<CategoriesController> logger)
         {
             _categoryRepository = categoryRepository;
+            _logger = logger;
         }
 
         // GET: /Categories
@@ -41,6 +41,7 @@ namespace InventoryManagement.Web.Controllers
 
             if (_categoryRepository.NameExists(model.Name))
             {
+                _logger.LogWarning("Kategori eklenemedi çünkü '{KategoriAdi}' ismi zaten kullanılıyor.", model.Name);
                 ModelState.AddModelError(nameof(model.Name), "Bu isimde bir kategori zaten var.");
                 return View(model);
             }
@@ -53,11 +54,13 @@ namespace InventoryManagement.Web.Controllers
 
             _categoryRepository.Add(category);
 
+            _logger.LogInformation("Yeni kategori oluşturuldu. Id: {KategoriId}, Ad: {KategoriAdi}", category.Id, category.Name);
+
             TempData["SuccessMessage"] = $"'{category.Name}' kategorisi oluşturuldu.";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Categories/Edit/5
+        // GET: /Categories/Edit/id
         [HttpGet]
         public IActionResult Edit(int id)
         {
@@ -77,7 +80,7 @@ namespace InventoryManagement.Web.Controllers
             return View(model);
         }
 
-        // POST: /Categories/Edit/5
+        // POST: /Categories/Edit/id
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Edit(int id, CategoryFormViewModel model)
@@ -92,11 +95,13 @@ namespace InventoryManagement.Web.Controllers
             var category = _categoryRepository.GetById(id);
             if (category is null)
             {
+                _logger.LogWarning("Güncellenmek istenen kategori bulunamadı. Id: {KategoriId}", id);
                 return NotFound();
             }
 
             if (_categoryRepository.NameExists(model.Name, id))
             {
+                _logger.LogWarning("Kategori güncellenemedi çünkü '{KategoriAdi}' ismi zaten kullanılıyor.", model.Name);
                 ModelState.AddModelError(nameof(model.Name), "Bu isimde bir kategori zaten var.");
                 return View(model);
             }
@@ -106,11 +111,13 @@ namespace InventoryManagement.Web.Controllers
 
             _categoryRepository.Update(category);
 
+            _logger.LogInformation("Kategori güncellendi. Id: {KategoriId}, Ad: {KategoriAdi}", category.Id, category.Name);
+
             TempData["SuccessMessage"] = $"'{category.Name}' kategorisi güncellendi.";
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: /Categories/Delete/5
+        // POST: /Categories/Delete/id
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Delete(int id)
@@ -118,17 +125,20 @@ namespace InventoryManagement.Web.Controllers
             var category = _categoryRepository.GetById(id);
             if (category is null)
             {
+                _logger.LogWarning("Silinmek istenen kategori bulunamadı. Id: {KategoriId}", id);
                 return NotFound();
             }
 
             try
             {
                 _categoryRepository.Delete(category);
+                _logger.LogInformation("Kategori silindi. Id: {KategoriId}, Ad: {KategoriAdi}", category.Id, category.Name);
                 TempData["SuccessMessage"] = "Kategori silindi.";
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Kategoriye bağlı ürün varsa veritabanı silmeye izin vermez (Restrict).
+                _logger.LogError(ex, "Kategori silinirken hata oluştu. Id: {KategoriId}", id);
                 TempData["ErrorMessage"] = "Bu kategoriye bağlı ürünler olduğu için silinemedi.";
             }
 

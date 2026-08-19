@@ -1,4 +1,5 @@
 using InventoryManagement.Web.Data;
+using InventoryManagement.Web.Logging;
 using InventoryManagement.Web.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,10 @@ namespace InventoryManagement.Web
 
             // MVC için Controller ve View desteğini ekliyoruz.
             builder.Services.AddControllersWithViews();
+
+            // Kendi yazdığımız dosya logger'ını da ekliyoruz.
+            // Bu sayede loglar hem konsola (varsayılan) hem de Logs klasöründeki dosyaya yazılacak.
+            builder.Logging.AddProvider(new DosyayaYazanLoggerProvider("Logs"));
 
             // Veritabanı bağlantı bilgisini appsettings.json'dan okuyoruz.
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")

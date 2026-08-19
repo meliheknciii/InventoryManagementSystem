@@ -1,4 +1,4 @@
-﻿@model List<InventoryManagement.Web.Models.Product>
+﻿@model InventoryManagement.Web.Models.ProductListViewModel
 @{
     ViewData["Title"] = "Ürünler";
 }
@@ -8,9 +8,65 @@
     <a href="@Url.Action("Create")" class="btn btn-primary">Yeni Ürün</a>
 </div>
 
-@if (Model.Count == 0)
+@* 
+    Arama ve filtreleme formu.
+    method="get" kullanıyoruz çünkü veri değiştirmiyoruz, sadece listeyi filtreliyoruz.
+    Bu sayede filtre değerleri URL'e query string olarak eklenir (örn: ?searchTerm=kalem&categoryId=2)
+    ve sayfa yenilense/paylaşılsa bile filtre korunur.
+*@
+<form action="@Url.Action("Index")" method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-5">
+        <label for="searchTerm" class="form-label">Ara</label>
+        <input type="text" id="searchTerm" name="searchTerm" value="@Model.SearchTerm"
+               class="form-control" placeholder="Ürün adı veya SKU..." />
+    </div>
+    <div class="col-md-4">
+        <label for="categoryId" class="form-label">Kategori</label>
+        <select id="categoryId" name="categoryId" class="form-select">
+            @* 
+                "Tüm Kategoriler" seçeneği, categoryId hiç seçilmediğinde (null) işaretli kalır.
+                Not: HTML'de "selected" bir boolean attribute'tur; sadece VAR OLMASI yeterlidir,
+                değeri (true/false yazması) önemli değildir. Bu yüzden selected="@(...)" yazmak
+                YANLIŞTIR (her zaman seçili görünür). Bunun yerine if/else ile attribute'u
+                tamamen var etmeli ya da hiç yazmamalıyız.
+            *@
+            @if (Model.CategoryId is null)
+            {
+                <option value="" selected="selected">Tüm Kategoriler</option>
+            }
+            else
+            {
+                <option value="">Tüm Kategoriler</option>
+            }
+
+            @* 
+                Controller'da BuildCategoryOptions() metodu ile hazırlanan liste burada döngüye alınıyor.
+                Her kategori için bir <option> etiketi oluşturuyoruz.
+                Seçili olan kategoriye "selected" özelliğini ekliyoruz ki filtre uygulandıktan sonra
+                kullanıcı hangi kategoriyi seçtiğini dropdown'da görebilsin.
+            *@
+            @foreach (var category in Model.CategoryOptions)
+            {
+                @if (category.Selected)
+                {
+                    <option value="@category.Value" selected="selected">@category.Text</option>
+                }
+                else
+                {
+                    <option value="@category.Value">@category.Text</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Filtrele</button>
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Temizle</a>
+    </div>
+</form>
+
+@if (Model.Products.Count == 0)
 {
-    <p class="text-muted">Henüz ürün eklenmemiş.</p>
+    <p class="text-muted">Aramanıza uygun ürün bulunamadı.</p>
 }
 else
 {
@@ -25,7 +81,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var product in Model)
+            @foreach (var product in Model.Products)
             {
                 <tr>
                     <td>@product.Name</td>

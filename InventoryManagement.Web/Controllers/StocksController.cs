@@ -12,11 +12,13 @@ namespace InventoryManagement.Web.Controllers
 
         private readonly IStockRepository _stockRepository;
         private readonly IProductRepository _productRepository;
+        private readonly ILogger<StocksController> _logger;
 
-        public StocksController(IStockRepository stockRepository, IProductRepository productRepository)
+        public StocksController(IStockRepository stockRepository, IProductRepository productRepository, ILogger<StocksController> logger)
         {
             _stockRepository = stockRepository;
             _productRepository = productRepository;
+            _logger = logger;
         }
 
         // GET: /Stocks
@@ -51,6 +53,7 @@ namespace InventoryManagement.Web.Controllers
             var product = _productRepository.GetById(model.ProductId);
             if (product is null)
             {
+                _logger.LogWarning("Stok eklenemedi çünkü seçilen ürün bulunamadı. ÜrünId: {UrunId}", model.ProductId);
                 ModelState.AddModelError(nameof(model.ProductId), "Seçilen ürün bulunamadı.");
                 model.ProductOptions = BuildProductOptions(model.ProductId);
                 return View(model);
@@ -59,6 +62,7 @@ namespace InventoryManagement.Web.Controllers
             var existingStock = _stockRepository.GetByProductId(model.ProductId);
             if (existingStock is not null)
             {
+                _logger.LogWarning("Stok eklenemedi çünkü ÜrünId: {UrunId} için zaten stok kaydı var.", model.ProductId);
                 ModelState.AddModelError(nameof(model.ProductId), "Bu ürünün zaten bir stok kaydı var.");
                 model.ProductOptions = BuildProductOptions(model.ProductId);
                 return View(model);
@@ -74,6 +78,8 @@ namespace InventoryManagement.Web.Controllers
 
             _stockRepository.Add(stock);
 
+            _logger.LogInformation("Yeni stok kaydı oluşturuldu. StokId: {StokId}, ÜrünId: {UrunId}, Miktar: {Miktar}", stock.Id, stock.ProductId, stock.Quantity);
+
             TempData["SuccessMessage"] = "Stok kaydı oluşturuldu.";
             return RedirectToAction(nameof(Index));
         }
@@ -85,6 +91,7 @@ namespace InventoryManagement.Web.Controllers
             var stock = _stockRepository.GetById(id);
             if (stock is null)
             {
+                _logger.LogWarning("Düzenlenmek istenen stok kaydı bulunamadı. StokId: {StokId}", id);
                 return NotFound();
             }
 
@@ -118,6 +125,7 @@ namespace InventoryManagement.Web.Controllers
             var stock = _stockRepository.GetById(id);
             if (stock is null)
             {
+                _logger.LogWarning("Güncellenmek istenen stok kaydı bulunamadı. StokId: {StokId}", id);
                 return NotFound();
             }
 
@@ -127,6 +135,18 @@ namespace InventoryManagement.Web.Controllers
             stock.LastUpdatedUtc = DateTime.UtcNow;
 
             _stockRepository.Update(stock);
+
+            _logger.LogInformation("Stok kaydı güncellendi. StokId: {StokId}, Yeni Miktar: {Miktar}", stock.Id, stock.Quantity);
+
+            // Stok azaldıysa veya tükendiyse bunu ayrıca uyarı olarak loglayalım.
+            if (stock.Status == StockStatus.LowStock)
+            {
+                _logger.LogWarning("Stok azaldı! StokId: {StokId}, Miktar: {Miktar}", stock.Id, stock.Quantity);
+            }
+            else if (stock.Status == StockStatus.OutOfStock)
+            {
+                _logger.LogWarning("Stok tükendi! StokId: {StokId}", stock.Id);
+            }
 
             TempData["SuccessMessage"] = "Stok kaydı güncellendi.";
             return RedirectToAction(nameof(Index));
@@ -140,10 +160,12 @@ namespace InventoryManagement.Web.Controllers
             var stock = _stockRepository.GetById(id);
             if (stock is null)
             {
+                _logger.LogWarning("Silinmek istenen stok kaydı bulunamadı. StokId: {StokId}", id);
                 return NotFound();
             }
 
             _stockRepository.Delete(stock);
+            _logger.LogInformation("Stok kaydı silindi. StokId: {StokId}", id);
             TempData["SuccessMessage"] = "Stok kaydı silindi.";
 
             return RedirectToAction(nameof(Index));

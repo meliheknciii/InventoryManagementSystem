@@ -10,15 +10,18 @@ namespace InventoryManagement.Web.Controllers
         private readonly ICategoryRepository _categoryRepository;
         private readonly IProductRepository _productRepository;
         private readonly IStockRepository _stockRepository;
+        private readonly ILogger<HomeController> _logger;
 
         public HomeController(
             ICategoryRepository categoryRepository,
             IProductRepository productRepository,
-            IStockRepository stockRepository)
+            IStockRepository stockRepository,
+            ILogger<HomeController> logger)
         {
             _categoryRepository = categoryRepository;
             _productRepository = productRepository;
             _stockRepository = stockRepository;
+            _logger = logger;
         }
 
         // GET: /  (Ana sayfa / Panel)
@@ -45,6 +48,9 @@ namespace InventoryManagement.Web.Controllers
                     .ToList()
             };
 
+            _logger.LogInformation("Ana panel görüntülendi. Kategori: {KategoriSayisi}, Ürün: {UrunSayisi}, Az Stok: {AzStokSayisi}, Tükenen: {TukenenSayisi}",
+                dashboard.CategoryCount, dashboard.ProductCount, dashboard.LowStockCount, dashboard.OutOfStockCount);
+
             return View(dashboard);
         }
 
@@ -56,7 +62,9 @@ namespace InventoryManagement.Web.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var requestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+            _logger.LogError("Hata sayfası gösterildi. RequestId: {RequestId}", requestId);
+            return View(new ErrorViewModel { RequestId = requestId });
         }
     }
 }

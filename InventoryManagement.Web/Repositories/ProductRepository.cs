@@ -24,6 +24,33 @@ namespace InventoryManagement.Web.Repositories
                 .ToList();
         }
 
+        public List<Product> Search(string? searchTerm, int? categoryId)
+        {
+            // IQueryable üzerinde koşullu olarak filtre ekliyoruz;
+            // böylece filtreleme veritabanı tarafında (SQL) çalışır.
+            var query = _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Stock)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.Trim();
+                query = query.Where(p =>
+                    p.Name.Contains(term) ||
+                    p.Sku.Contains(term));
+            }
+
+            if (categoryId.HasValue && categoryId.Value > 0)
+            {
+                query = query.Where(p => p.CategoryId == categoryId.Value);
+            }
+
+            return query
+                .OrderBy(p => p.Name)
+                .ToList();
+        }
+
         public Product? GetById(int id)
         {
             return _context.Products
