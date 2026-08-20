@@ -1,5 +1,6 @@
 using InventoryManagement.Web.Data;
 using InventoryManagement.Web.Logging;
+using InventoryManagement.Web.Middlewares;
 using InventoryManagement.Web.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +34,11 @@ namespace InventoryManagement.Web
             builder.Services.AddScoped<IStockRepository, StockRepository>();
 
             var app = builder.Build();
+
+            // Genel hata yönetimi middleware'ini boru hattının en başına ekliyoruz
+            // ki kendisinden sonraki tüm middleware ve controller'lardaki
+            // yakalanmayan hataları görebilsin.
+            app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
             // HTTP pipeline (istek/cevap boru hattı) yapılandırması.
             if (!app.Environment.IsDevelopment())
