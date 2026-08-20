@@ -18,17 +18,31 @@ namespace InventoryManagement.Web.Controllers
             _logger = logger;
         }
 
+        // Bir sayfada kaç ürün gösterileceğini burada sabit olarak tutuyoruz.
+        private const int PageSize = 5;
+
         // GET: /Products
-        public IActionResult Index(string? searchTerm, int? categoryId)
+        public IActionResult Index(string? searchTerm, int? categoryId, int page = 1)
         {
-            var products = _productRepository.Search(searchTerm, categoryId);
+            // Kullanıcı adres çubuğundan page=0 veya page=-3 gibi geçersiz bir
+            // değer yazarsa diye en az 1 olmasını garantiliyoruz.
+            if (page < 1)
+            {
+                page = 1;
+            }
+
+            var products = _productRepository.Search(searchTerm, categoryId, page, PageSize);
+            var totalCount = _productRepository.SearchCount(searchTerm, categoryId);
 
             var model = new ProductListViewModel
             {
                 Products = products,
                 SearchTerm = searchTerm,
                 CategoryId = categoryId,
-                CategoryOptions = BuildCategoryOptions(categoryId)
+                CategoryOptions = BuildCategoryOptions(categoryId),
+                PageNumber = page,
+                PageSize = PageSize,
+                TotalCount = totalCount
             };
 
             return View(model);

@@ -101,4 +101,38 @@ else
             }
         </tbody>
     </table>
+
+    @*
+        Sayfalama (Pagination) alanı.
+        Arama kutusu ve kategori filtresini de linke ekliyoruz ki sayfa değiştirince
+        filtreler kaybolmasın. Sadece 1'den fazla sayfa varsa gösteriyoruz.
+    *@
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center">
+                @* Önceki sayfa butonu *@
+                <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { searchTerm = Model.SearchTerm, categoryId = Model.CategoryId, page = Model.PageNumber - 1 })">Önceki</a>
+                </li>
+
+                @* Sayfa numaraları (1, 2, 3, ...) *@
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { searchTerm = Model.SearchTerm, categoryId = Model.CategoryId, page = i })">@i</a>
+                    </li>
+                }
+
+                @* Sonraki sayfa butonu *@
+                <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { searchTerm = Model.SearchTerm, categoryId = Model.CategoryId, page = Model.PageNumber + 1 })">Sonraki</a>
+                </li>
+            </ul>
+        </nav>
+
+        <p class="text-center text-muted">
+            Toplam @Model.TotalCount ürün, sayfa @Model.PageNumber / @Model.TotalPages
+        </p>
+    }
 }

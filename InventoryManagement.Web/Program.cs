@@ -1,7 +1,12 @@
 using InventoryManagement.Web.Data;
 using InventoryManagement.Web.Logging;
 using InventoryManagement.Web.Middlewares;
+using InventoryManagement.Web.Models;
 using InventoryManagement.Web.Repositories;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManagement.Web
@@ -13,7 +18,28 @@ namespace InventoryManagement.Web
             var builder = WebApplication.CreateBuilder(args);
 
             // MVC için Controller ve View desteğini ekliyoruz.
-            builder.Services.AddControllersWithViews();
+            // Global filtre ile, [AllowAnonymous] işaretlenmemiş tüm action'lar
+            // giriş yapmış (admin) kullanıcı gerektirir.
+            builder.Services.AddControllersWithViews(options =>
+            {
+                var policy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+                options.Filters.Add(new AuthorizeFilter(policy));
+            });
+
+            // Admin girişi için cookie tabanlı authentication ekliyoruz.
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/Account/Login";
+                    options.AccessDeniedPath = "/Account/Login";
+                    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+                    options.SlidingExpiration = true;
+                });
+
+            // Admin şifrelerini güvenli şekilde hash'lemek/doğrulamak için kullanıyoruz.
+            builder.Services.AddScoped<IPasswordHasher<Admin>, PasswordHasher<Admin>>();
 
             // Kendi yazdığımız dosya logger'ını da ekliyoruz.
             // Bu sayede loglar hem konsola (varsayılan) hem de Logs klasöründeki dosyaya yazılacak.
@@ -52,11 +78,31 @@ namespace InventoryManagement.Web
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
+
+            // Uygulama ilk defa çalıştığında bekleyen migration'ları uyguluyoruz
+            // ve veritabanında hiç admin yoksa varsayılan bir admin kullanıcısı oluşturuyoruz.
+            // Kullanıcı adı: admin, şifre: Admin123!
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                dbContext.Database.Migrate();
+
+                var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<Admin>>();
+
+                if (!dbContext.Admins.Any())
+                {
+                    var defaultAdmin = new Admin { Username = "admin" };
+                    defaultAdmin.PasswordHash = passwordHasher.HashPassword(defaultAdmin, "Admin123!");
+                    dbContext.Admins.Add(defaultAdmin);
+                    dbContext.SaveChanges();
+                }
+            }
 
             app.Run();
         }

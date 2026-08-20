@@ -15,6 +15,7 @@ namespace InventoryManagement.Web.Data
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<Product> Products => Set<Product>();
         public DbSet<Stock> Stocks => Set<Stock>();
+        public DbSet<Admin> Admins => Set<Admin>();
 
         // Tablo ilişkilerini ve kısıtlarını burada Fluent API ile belirtiyoruz.
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -46,6 +47,11 @@ namespace InventoryManagement.Web.Data
             // Bir ürünün sadece bir stok kaydı olabilsin diye ProductId'yi de unique yapıyoruz.
             modelBuilder.Entity<Stock>()
                 .HasIndex(s => s.ProductId)
+                .IsUnique();
+
+            // Kullanıcı adı benzersiz olsun.
+            modelBuilder.Entity<Admin>()
+                .HasIndex(a => a.Username)
                 .IsUnique();
         }
     }

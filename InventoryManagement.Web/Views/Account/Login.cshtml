@@ -1,0 +1,46 @@
+@model InventoryManagement.Web.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Giriş Yap";
+    Layout = "_Layout";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <h2 class="mb-4 text-center">Admin Girişi</h2>
+
+        <form action="@Url.Action("Login", "Account")" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+
+            @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
+            {
+                <div class="alert alert-danger">
+                    @foreach (var error in ViewData.ModelState[string.Empty]!.Errors)
+                    {
+                        <div>@error.ErrorMessage</div>
+                    }
+                </div>
+            }
+
+            <div class="mb-3">
+                <label for="Username" class="form-label">Kullanıcı Adı</label>
+                <input type="text" id="Username" name="Username" class="form-control" value="@Model.Username" autofocus />
+                @if (ViewData.ModelState["Username"]?.Errors.Count > 0)
+                {
+                    <div class="text-danger">@ViewData.ModelState["Username"]!.Errors[0].ErrorMessage</div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label for="Password" class="form-label">Şifre</label>
+                <input type="password" id="Password" name="Password" class="form-control" />
+                @if (ViewData.ModelState["Password"]?.Errors.Count > 0)
+                {
+                    <div class="text-danger">@ViewData.ModelState["Password"]!.Errors[0].ErrorMessage</div>
+                }
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+        </form>
+    </div>
+</div>

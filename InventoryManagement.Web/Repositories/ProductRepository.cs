@@ -24,10 +24,26 @@ namespace InventoryManagement.Web.Repositories
                 .ToList();
         }
 
-        public List<Product> Search(string? searchTerm, int? categoryId)
+        public List<Product> Search(string? searchTerm, int? categoryId, int pageNumber, int pageSize)
         {
-            // IQueryable üzerinde koşullu olarak filtre ekliyoruz;
-            // böylece filtreleme veritabanı tarafında (SQL) çalışır.
+            var query = BuildSearchQuery(searchTerm, categoryId);
+
+            return query
+                .OrderBy(p => p.Name)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+        }
+
+        public int SearchCount(string? searchTerm, int? categoryId)
+        {
+            return BuildSearchQuery(searchTerm, categoryId).Count();
+        }
+
+        // Search ve SearchCount metotlarının ikisi de aynı filtreleri kullandığı için
+        // filtreleme kodunu buraya alıp tekrar tekrar yazmaktan kurtulduk.
+        private IQueryable<Product> BuildSearchQuery(string? searchTerm, int? categoryId)
+        {
             var query = _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Stock)
@@ -46,9 +62,7 @@ namespace InventoryManagement.Web.Repositories
                 query = query.Where(p => p.CategoryId == categoryId.Value);
             }
 
-            return query
-                .OrderBy(p => p.Name)
-                .ToList();
+            return query;
         }
 
         public Product? GetById(int id)
