@@ -48,8 +48,21 @@ namespace InventoryManagement.Web.Middlewares
                     throw;
                 }
 
+                // Yanıtı temizleyip hata sayfasını AYNI istek içinde yeniden çalıştırıyoruz
+                // (re-execute). Böylece istemciye 302 yönlendirme yerine gerçek 500 durum
+                // kodu ile hata sayfası döner. Bu, kaldırılan UseExceptionHandler'ın
+                // yaptığı işin sadeleştirilmiş halidir.
                 context.Response.Clear();
-                context.Response.Redirect("/Home/Error");
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+                // Önceki istekten kalan routing/endpoint bilgilerini temizliyoruz ki
+                // istek yeni yola (/Home/Error) göre baştan yönlendirilebilsin.
+                context.SetEndpoint(null);
+                context.Request.RouteValues.Clear();
+                context.Request.Path = "/Home/Error";
+                context.Request.Method = HttpMethods.Get;
+
+                await _next(context);
             }
         }
     }

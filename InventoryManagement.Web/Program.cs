@@ -46,12 +46,17 @@ namespace InventoryManagement.Web
             builder.Logging.AddProvider(new DosyayaYazanLoggerProvider("Logs"));
 
             // Veritabanı bağlantı bilgisini appsettings.json'dan okuyoruz.
+            // ÜRETİM (production) ortamında bu değer appsettings.json yerine ortam
+            // değişkeni (ConnectionStrings__DefaultConnection) veya secret manager
+            // üzerinden verilmelidir; hassas bilgi kaynak koda commit edilmemelidir.
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("Connection string 'DefaultConnection' bulunamadı.");
 
             // EF Core DbContext'i DI container'a kaydediyoruz.
+            // EnableRetryOnFailure: geçici (transient) SQL Server bağlantı hatalarında
+            // işlemi otomatik olarak birkaç kez yeniden dener.
             builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(connectionString));
+                options.UseSqlServer(connectionString, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
             // Repository'leri DI container'a kaydediyoruz.
             // AddScoped: her HTTP isteğinde yeni bir örnek (instance) oluşturulur.
@@ -63,13 +68,16 @@ namespace InventoryManagement.Web
 
             // Genel hata yönetimi middleware'ini boru hattının en başına ekliyoruz
             // ki kendisinden sonraki tüm middleware ve controller'lardaki
-            // yakalanmayan hataları görebilsin.
+            // yakalanmayan hataları görebilsin. Merkezi loglama ve /Home/Error'a
+            // yönlendirme tek noktadan bu middleware ile yapılır.
             app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
             // HTTP pipeline (istek/cevap boru hattı) yapılandırması.
+            // Not: UseExceptionHandler bilinçli olarak eklenmedi. Eklenirse özel
+            // GlobalExceptionHandlingMiddleware'den önce (iç katmanda) hatayı yakalar
+            // ve production'da merkezi loglama devre dışı kalırdı.
             if (!app.Environment.IsDevelopment())
             {
-                app.UseExceptionHandler("/Home/Error");
                 app.UseHsts();
             }
 

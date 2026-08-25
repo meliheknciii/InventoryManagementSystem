@@ -1,6 +1,7 @@
 ﻿using InventoryManagement.Web.Models;
 using InventoryManagement.Web.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace InventoryManagement.Web.Controllers
 {
@@ -135,10 +136,12 @@ namespace InventoryManagement.Web.Controllers
                 _logger.LogInformation("Kategori silindi. Id: {KategoriId}, Ad: {KategoriAdi}", category.Id, category.Name);
                 TempData["SuccessMessage"] = "Kategori silindi.";
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
             {
-                // Kategoriye bağlı ürün varsa veritabanı silmeye izin vermez (Restrict).
-                _logger.LogError(ex, "Kategori silinirken hata oluştu. Id: {KategoriId}", id);
+                // Sadece veritabanı kısıt ihlalini (kategoriye bağlı ürün - Restrict) burada
+                // yakalıyoruz. Bağlantı hatası gibi diğer hatalar bilinçli olarak yakalanmaz,
+                // global hata middleware'ine düşer ve yanıltıcı mesaj gösterilmez.
+                _logger.LogError(ex, "Kategori silinirken kısıt ihlali oluştu. Id: {KategoriId}", id);
                 TempData["ErrorMessage"] = "Bu kategoriye bağlı ürünler olduğu için silinemedi.";
             }
 

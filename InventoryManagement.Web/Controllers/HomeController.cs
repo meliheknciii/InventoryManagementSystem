@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using InventoryManagement.Web.Models;
 using InventoryManagement.Web.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InventoryManagement.Web.Controllers
@@ -59,6 +60,10 @@ namespace InventoryManagement.Web.Controllers
             return View();
         }
 
+        // Hata sayfası, oturumu olmayan kullanıcılara da gösterilebilmelidir.
+        // Aksi halde global AuthorizeFilter yüzünden hata anında kullanıcı
+        // login sayfasına yönlendirilir ve asıl hata gizlenir.
+        [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
